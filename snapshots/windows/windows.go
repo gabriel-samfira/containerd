@@ -403,28 +403,22 @@ func (s *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 		}
 
 		var sizeInBytes uint64
-		if kind == snapshots.KindActive {
-			if sizeGBstr, ok := snapshotInfo.Labels[rootfsSizeInGBLabel]; ok {
-				log.G(ctx).Warnf("%q label is deprecated, please use %q instead.", rootfsSizeInGBLabel, rootfsSizeInBytesLabel)
+		if sizeGBstr, ok := snapshotInfo.Labels[rootfsSizeInGBLabel]; ok {
+			log.G(ctx).Warnf("%q label is deprecated, please use %q instead.", rootfsSizeInGBLabel, rootfsSizeInBytesLabel)
 
-				sizeInGB, err := strconv.ParseUint(sizeGBstr, 10, 32)
-				if err != nil {
-					return nil, fmt.Errorf("failed to parse label %q=%q: %w", rootfsSizeInGBLabel, sizeGBstr, err)
-				}
-				sizeInBytes = sizeInGB * 1024 * 1024 * 1024
+			sizeInGB, err := strconv.ParseUint(sizeGBstr, 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse label %q=%q: %w", rootfsSizeInGBLabel, sizeGBstr, err)
 			}
+			sizeInBytes = sizeInGB * 1024 * 1024 * 1024
+		}
 
-			// Prefer the newer label in bytes over the deprecated Windows specific GB variant.
-			if sizeBytesStr, ok := snapshotInfo.Labels[rootfsSizeInBytesLabel]; ok {
-				sizeInBytes, err = strconv.ParseUint(sizeBytesStr, 10, 64)
-				if err != nil {
-					return nil, fmt.Errorf("failed to parse label %q=%q: %w", rootfsSizeInBytesLabel, sizeBytesStr, err)
-				}
+		// Prefer the newer label in bytes over the deprecated Windows specific GB variant.
+		if sizeBytesStr, ok := snapshotInfo.Labels[rootfsSizeInBytesLabel]; ok {
+			sizeInBytes, err = strconv.ParseUint(sizeBytesStr, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse label %q=%q: %w", rootfsSizeInBytesLabel, sizeBytesStr, err)
 			}
-		} else {
-			// A view is just a read-write snapshot with a _really_ small sandbox, since we cannot actually
-			// make a read-only mount or junction point. https://superuser.com/q/881544/112473
-			sizeInBytes = 20 * 1024 * 1024 * 1024
 		}
 
 		var makeUVMScratch bool
