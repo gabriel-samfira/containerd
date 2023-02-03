@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"path/filepath"
 
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/snapshots"
@@ -44,13 +43,7 @@ func applyToMounts(m []mount.Mount, work string, a fstest.Applier) (err error) {
 		}
 	}()
 
-	tdWorkDir := filepath.Join(td, "wcow_workaround")
-
-	if err := os.MkdirAll(tdWorkDir, 0777); err != nil {
-		return fmt.Errorf("failed to prepare in-image workdir: %w", err)
-	}
-
-	return a.Apply(tdWorkDir)
+	return a.Apply(td)
 }
 
 // createSnapshot creates a new snapshot in the snapshotter
@@ -106,7 +99,7 @@ func checkSnapshot(ctx context.Context, sn snapshots.Snapshotter, work, name, ch
 		}
 	}()
 
-	if err := fstest.CheckDirectoryEqual(check, filepath.Join(td, "wcow_workaround")); err != nil {
+	if err := fstest.CheckDirectoryEqual(check, td); err != nil {
 		return fmt.Errorf("check directory failed: %w", err)
 	}
 

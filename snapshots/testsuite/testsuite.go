@@ -162,15 +162,7 @@ func checkSnapshotterBasic(ctx context.Context, t *testing.T, snapshotter snapsh
 		t.Fatalf("failure reason: %+v", err)
 	}
 
-	// Work around failure of fstest.CheckDirectoryEqualWithApplier when
-	// pointed at a junction point on Windows, i.e. a mounted layer.
-	preparingWorkDir := filepath.Join(preparing, "wcow_workaround")
-	if err := os.MkdirAll(preparingWorkDir, 0777); err != nil {
-		testutil.Unmount(t, preparing)
-		t.Fatalf("failure reason: %+v", err)
-	}
-
-	if err := initialApplier.Apply(preparingWorkDir); err != nil {
+	if err := initialApplier.Apply(preparing); err != nil {
 		testutil.Unmount(t, preparing)
 		t.Fatalf("failure reason: %+v", err)
 	}
@@ -208,14 +200,12 @@ func checkSnapshotterBasic(ctx context.Context, t *testing.T, snapshotter snapsh
 		t.Fatalf("failure reason: %+v", err)
 	}
 
-	nextWorkDir := filepath.Join(next, "wcow_workaround")
-
-	if err := fstest.CheckDirectoryEqualWithApplier(nextWorkDir, initialApplier); err != nil {
+	if err := fstest.CheckDirectoryEqualWithApplier(next, initialApplier); err != nil {
 		testutil.Unmount(t, next)
 		t.Fatalf("failure reason: %+v", err)
 	}
 
-	if err := diffApplier.Apply(nextWorkDir); err != nil {
+	if err := diffApplier.Apply(next); err != nil {
 		testutil.Unmount(t, next)
 		t.Fatalf("failure reason: %+v", err)
 	}
@@ -280,9 +270,7 @@ func checkSnapshotterBasic(ctx context.Context, t *testing.T, snapshotter snapsh
 		t.Fatalf("failure reason: %+v", err)
 	}
 
-	nextnextWorkDir := filepath.Join(nextnext, "wcow_workaround")
-
-	if err := fstest.CheckDirectoryEqualWithApplier(nextnextWorkDir,
+	if err := fstest.CheckDirectoryEqualWithApplier(nextnext,
 		fstest.Apply(initialApplier, diffApplier)); err != nil {
 		testutil.Unmount(t, nextnext)
 		t.Fatalf("failure reason: %+v", err)
@@ -956,15 +944,7 @@ func check128LayersMount(name string) func(ctx context.Context, t *testing.T, sn
 				t.Fatalf("[layer %d] failed to mount on the target(%s): %+v", i, preparing, err)
 			}
 
-			t.Log("mount", preparing)
-
-			preparingWorkDir := filepath.Join(preparing, "wcow_workaround")
-			if err := os.MkdirAll(preparingWorkDir, 0777); err != nil {
-				testutil.Unmount(t, preparing)
-				t.Fatalf("[layer %d] failed to create workdir: %+v", i, err)
-			}
-
-			if err := fstest.CheckDirectoryEqual(preparingWorkDir, flat); err != nil {
+			if err := fstest.CheckDirectoryEqual(preparing, flat); err != nil {
 				testutil.Unmount(t, preparing)
 				t.Fatalf("[layer %d] preparing doesn't equal to flat before apply: %+v", i, err)
 			}
@@ -974,12 +954,12 @@ func check128LayersMount(name string) func(ctx context.Context, t *testing.T, sn
 				t.Fatalf("[layer %d] failed to apply on flat dir: %+v", i, err)
 			}
 
-			if err = applier.Apply(preparingWorkDir); err != nil {
+			if err = applier.Apply(preparing); err != nil {
 				testutil.Unmount(t, preparing)
 				t.Fatalf("[layer %d] failed to apply on preparing dir: %+v", i, err)
 			}
 
-			if err := fstest.CheckDirectoryEqual(preparingWorkDir, flat); err != nil {
+			if err := fstest.CheckDirectoryEqual(preparing, flat); err != nil {
 				testutil.Unmount(t, preparing)
 				t.Fatalf("[layer %d] preparing doesn't equal to flat after apply: %+v", i, err)
 			}
@@ -1008,9 +988,7 @@ func check128LayersMount(name string) func(ctx context.Context, t *testing.T, sn
 		}
 		defer testutil.Unmount(t, view)
 
-		viewWorkDir := filepath.Join(view, "wcow_workaround")
-
-		if err := fstest.CheckDirectoryEqual(viewWorkDir, flat); err != nil {
+		if err := fstest.CheckDirectoryEqual(view, flat); err != nil {
 			t.Fatalf("fullview should equal to flat: %+v", err)
 		}
 	}
