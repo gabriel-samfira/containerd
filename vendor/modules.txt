@@ -100,7 +100,7 @@ github.com/containerd/cgroups/v3/cgroup2/stats
 # github.com/containerd/console v1.0.3
 ## explicit; go 1.13
 github.com/containerd/console
-# github.com/containerd/continuity v0.3.1-0.20221025173834-5817935fcfbe
+# github.com/containerd/continuity v0.3.1-0.20221025173834-5817935fcfbe => C:/Users/Administrator/work/rebased/continuity
 ## explicit; go 1.17
 github.com/containerd/continuity
 github.com/containerd/continuity/devices
@@ -810,6 +810,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
-# github.com/opencontainers/runtime-tools => github.com/opencontainers/runtime-tools v0.0.0-20221026201742-946c877fa809
 # github.com/AdaLogics/go-fuzz-headers => github.com/AdamKorcz/go-fuzz-headers-1 v0.0.0-20230111232327-1f10f66a31bf
 # github.com/Microsoft/hcsshim => C:/Users/Administrator/work/rebased/hcsshim
+# github.com/containerd/continuity => C:/Users/Administrator/work/rebased/continuity
+# github.com/opencontainers/runtime-tools => github.com/opencontainers/runtime-tools v0.0.0-20221026201742-946c877fa809

@@ -21,9 +21,10 @@ require (
 	golang.org/x/sys v0.4.0
 )
 
+require github.com/Microsoft/go-winio v0.6.0
+
 require (
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221215162035-5330a85ea652 // indirect
-	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/console v1.0.3 // indirect
@@ -82,3 +83,5 @@ replace (
 replace github.com/AdaLogics/go-fuzz-headers => github.com/AdamKorcz/go-fuzz-headers-1 v0.0.0-20230111232327-1f10f66a31bf
 
 replace github.com/Microsoft/hcsshim => C:/Users/Administrator/work/rebased/hcsshim
+
+replace github.com/containerd/continuity => C:/Users/Administrator/work/rebased/continuity

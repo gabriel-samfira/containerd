@@ -142,8 +142,9 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/opencontainers/runtime-tools => github.com/opencontainers/runtime-tools v0.0.0-20221026201742-946c877fa809
-
-replace github.com/AdaLogics/go-fuzz-headers => github.com/AdamKorcz/go-fuzz-headers-1 v0.0.0-20230111232327-1f10f66a31bf
-
-replace github.com/Microsoft/hcsshim => C:/Users/Administrator/work/rebased/hcsshim
+replace (
+	github.com/AdaLogics/go-fuzz-headers => github.com/AdamKorcz/go-fuzz-headers-1 v0.0.0-20230111232327-1f10f66a31bf
+	github.com/Microsoft/hcsshim => C:/Users/Administrator/work/rebased/hcsshim
+	github.com/containerd/continuity => C:/Users/Administrator/work/rebased/continuity
+	github.com/opencontainers/runtime-tools => github.com/opencontainers/runtime-tools v0.0.0-20221026201742-946c877fa809
+)
