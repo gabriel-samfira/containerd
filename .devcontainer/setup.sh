@@ -24,5 +24,5 @@ go install github.com/pilebones/go-udev@latest
 
 make binaries GO_BUILD_FLAGS="-mod=vendor"
 sudo -E PATH=$PATH make install
-sudo mkdir -p /run/udev
-sudo mount -o bind /run2/udev /run/udev
+#sudo mkdir -p /run/udev
+#sudo mount -o bind /run2/udev /run/udev
