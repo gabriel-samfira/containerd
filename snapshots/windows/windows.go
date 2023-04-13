@@ -264,6 +264,10 @@ func (s *snapshotter) Remove(ctx context.Context, key string) error {
 			}
 		)
 
+		if unprepareErr := hcsshim.UnprepareLayer(di, layerID); unprepareErr != nil {
+			return fmt.Errorf("failed to unprepare layer following failed rename: %s: %w", unprepareErr, err)
+		}
+
 		if deactivateErr := hcsshim.DeactivateLayer(di, layerID); deactivateErr != nil {
 			return fmt.Errorf("failed to deactivate layer following failed rename: %s: %w", deactivateErr, err)
 		}
