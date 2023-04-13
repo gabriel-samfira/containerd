@@ -38,3 +38,14 @@ func All(mounts []Mount, target string) error {
 	}
 	return nil
 }
+
+// ReadOnly returns a boolean value indicating whether this mount has the "ro"
+// option set.
+func (m *Mount) ReadOnly() bool {
+	for _, option := range m.Options {
+		if option == "ro" {
+			return true
+		}
+	}
+	return false
+}
