@@ -17,16 +17,22 @@
 package integration
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	goruntime "runtime"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/containerd/containerd/integration/images"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 const (
@@ -35,6 +41,16 @@ const (
 	// ContainerUser username inside a Windows container.
 	containerUserSID = "S-1-5-93-2-2"
 )
+
+type volumeFile struct {
+	fileName string
+	contents string
+}
+
+type containerVolume struct {
+	containerPath string
+	files         []volumeFile
+}
 
 func TestVolumeCopyUp(t *testing.T) {
 	var (
@@ -59,23 +75,76 @@ func TestVolumeCopyUp(t *testing.T) {
 	t.Logf("Start the container")
 	require.NoError(t, runtimeService.StartContainer(cn))
 
-	// ghcr.io/containerd/volume-copy-up:2.1 contains a test_dir
-	// volume, which contains a test_file with content "test_content".
-	t.Logf("Check whether volume contains the test file")
-	stdout, stderr, err := runtimeService.ExecSync(cn, []string{
-		"cat",
-		"/test_dir/test_file",
-	}, execTimeout)
-	require.NoError(t, err)
-	assert.Empty(t, stderr)
-	assert.Equal(t, "test_content\n", string(stdout))
+	expectedVolumes := []containerVolume{
+		{
+			containerPath: "/test_dir",
+			files: []volumeFile{
+				{
+					fileName: "test_file",
+					contents: "test_content\n",
+				},
+			},
+		},
+		{
+			containerPath: "/:colon_prefixed",
+			files: []volumeFile{
+				{
+					fileName: "colon_prefixed_file",
+					contents: "test_content\n",
+				},
+			},
+		},
+		{
+			containerPath: "/C:/weird_test_dir",
+			files: []volumeFile{
+				{
+					fileName: "weird_test_file",
+					contents: "test_content\n",
+				},
+			},
+		},
+	}
 
+	if runtime.GOOS == "windows" {
+		expectedVolumes = []containerVolume{
+			{
+				containerPath: "C:/test_dir",
+				files: []volumeFile{
+					{
+						fileName: "test_file",
+						contents: "test_content\n",
+					},
+				},
+			},
+			{
+				containerPath: "D:",
+				files:         []volumeFile{},
+			},
+		}
+	}
+
+	// ghcr.io/containerd/volume-copy-up:2.2 contains 3 volumes on Linux and 2 volumes on Windows.
+	// On linux, each of the volumes contains a single file, all with the same conrent. On Windows,
+	// non C volumes defined in the image start out as empty.
+	for _, vol := range expectedVolumes {
+		for _, file := range vol.files {
+			t.Logf("Check whether volume %s contains the test file %s", vol.containerPath, file.fileName)
+			stdout, stderr, err := runtimeService.ExecSync(cn, []string{
+				"cat",
+				filepath.Join(vol.containerPath, file.fileName),
+			}, execTimeout)
+			require.NoError(t, err)
+			assert.Empty(t, stderr)
+			assert.Equal(t, file.contents, string(stdout))
+		}
+	}
+	volumeMappings, err := getContainerVolumes(t, *criRoot, cn)
+	require.NoError(t, err)
 	t.Logf("Check host path of the volume")
-	volumePaths, err := getHostPathForVolumes(*criRoot, cn)
-	require.NoError(t, err)
-	assert.Equal(t, len(volumePaths), 1, "expected exactly 1 volume")
+	assert.Equalf(t, len(expectedVolumes), len(volumeMappings), "expected exactly %d volume(s)", len(expectedVolumes))
 
-	testFilePath := filepath.Join(volumePaths[0], "test_file")
+	testFilePath := filepath.Join(volumeMappings[expectedVolumes[0].containerPath], expectedVolumes[0].files[0].fileName)
+	inContainerPath := filepath.Join(expectedVolumes[0].containerPath, expectedVolumes[0].files[0].fileName)
 	contents, err := os.ReadFile(testFilePath)
 	require.NoError(t, err)
 	assert.Equal(t, "test_content\n", string(contents))
@@ -84,7 +153,7 @@ func TestVolumeCopyUp(t *testing.T) {
 	_, _, err = runtimeService.ExecSync(cn, []string{
 		"sh",
 		"-c",
-		"echo new_content > /test_dir/test_file",
+		fmt.Sprintf("echo new_content > %s", inContainerPath),
 	}, execTimeout)
 	require.NoError(t, err)
 
@@ -151,6 +220,35 @@ func TestVolumeOwnership(t *testing.T) {
 	output, err := getOwnership(volumePaths[0])
 	require.NoError(t, err)
 	assert.Equal(t, expectedHostOutput, output)
+}
+
+func getContainerVolumes(t *testing.T, criRoot, containerID string) (map[string]string, error) {
+	client, err := RawRuntimeClient()
+	require.NoError(t, err, "failed to get raw grpc runtime service client")
+	request := &v1.ContainerStatusRequest{
+		ContainerId: containerID,
+		Verbose:     true,
+	}
+	response, err := client.ContainerStatus(context.TODO(), request)
+	require.NoError(t, err)
+	ret := make(map[string]string)
+
+	mounts := struct {
+		RuntimeSpec struct {
+			Mounts []specs.Mount `json:"mounts"`
+		} `json:"runtimeSpec"`
+	}{}
+
+	info := response.Info["info"]
+	err = json.Unmarshal([]byte(info), &mounts)
+	require.NoError(t, err)
+	containerVolumesHostPath := filepath.Join(criRoot, "containers", containerID, "volumes")
+	for _, mount := range mounts.RuntimeSpec.Mounts {
+		if strings.HasPrefix(mount.Source, containerVolumesHostPath) {
+			ret[mount.Destination] = mount.Source
+		}
+	}
+	return ret, nil
 }
 
 func getHostPathForVolumes(criRoot, containerID string) ([]string, error) {
