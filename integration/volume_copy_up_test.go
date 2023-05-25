@@ -247,10 +247,13 @@ func getContainerVolumes(t *testing.T, criRoot, containerID string) (map[string]
 	require.NoError(t, err)
 	containerVolumesHostPath := filepath.Join(criRoot, "containers", containerID, "volumes")
 	for _, mount := range mounts.RuntimeSpec.Mounts {
-		norm, err := getFinalPath(mount.Source)
-		require.NoError(t, err)
-		if strings.HasPrefix(norm, containerVolumesHostPath) {
-			ret[mount.Destination] = norm
+		// norm, err := getFinalPath(mount.Source)
+		// require.NoError(t, err)
+		if runtime.GOOS == "linux" && strings.HasPrefix(mount.Source, containerVolumesHostPath) {
+			ret[mount.Destination] = mount.Source
+		} else if runtime.GOOS == "windows" {
+			// On windows we only get the volume mounts, so no need to do prefix checks.
+			ret[mount.Destination] = mount.Source
 		}
 	}
 	return ret, nil

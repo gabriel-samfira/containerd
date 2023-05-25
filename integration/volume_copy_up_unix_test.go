@@ -32,7 +32,3 @@ func getOwnership(path string) (string, error) {
 	}
 	return string(output), nil
 }
-
-func getFinalPath(pth string) (string, error) {
-	return pth, nil
-}
