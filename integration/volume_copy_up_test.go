@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	goruntime "runtime"
 	"strings"
 	"testing"
 	"time"
@@ -108,7 +107,7 @@ func TestVolumeCopyUp(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		expectedVolumes = []containerVolume{
 			{
-				containerPath: "C:/test_dir",
+				containerPath: "C:\\test_dir",
 				files: []volumeFile{
 					{
 						fileName: "test_file",
@@ -131,13 +130,14 @@ func TestVolumeCopyUp(t *testing.T) {
 			t.Logf("Check whether volume %s contains the test file %s", vol.containerPath, file.fileName)
 			stdout, stderr, err := runtimeService.ExecSync(cn, []string{
 				"cat",
-				filepath.Join(vol.containerPath, file.fileName),
+				filepath.ToSlash(filepath.Join(vol.containerPath, file.fileName)),
 			}, execTimeout)
 			require.NoError(t, err)
 			assert.Empty(t, stderr)
 			assert.Equal(t, file.contents, string(stdout))
 		}
 	}
+
 	volumeMappings, err := getContainerVolumes(t, *criRoot, cn)
 	require.NoError(t, err)
 	t.Logf("Check host path of the volume")
@@ -153,7 +153,7 @@ func TestVolumeCopyUp(t *testing.T) {
 	_, _, err = runtimeService.ExecSync(cn, []string{
 		"sh",
 		"-c",
-		fmt.Sprintf("echo new_content > %s", inContainerPath),
+		fmt.Sprintf("echo new_content > %s", filepath.ToSlash(inContainerPath)),
 	}, execTimeout)
 	require.NoError(t, err)
 
@@ -198,7 +198,7 @@ func TestVolumeOwnership(t *testing.T) {
 	}
 	expectedContainerOutput := "65534:65534\n"
 	expectedHostOutput := "65534:65534\n"
-	if goruntime.GOOS == "windows" {
+	if runtime.GOOS == "windows" {
 		cmd = []string{
 			"C:\\bin\\get_owner.exe",
 			"C:\\volumes\\test_dir",
@@ -244,8 +244,10 @@ func getContainerVolumes(t *testing.T, criRoot, containerID string) (map[string]
 	require.NoError(t, err)
 	containerVolumesHostPath := filepath.Join(criRoot, "containers", containerID, "volumes")
 	for _, mount := range mounts.RuntimeSpec.Mounts {
-		if strings.HasPrefix(mount.Source, containerVolumesHostPath) {
-			ret[mount.Destination] = mount.Source
+		norm, err := getFinalPath(mount.Source)
+		require.NoError(t, err)
+		if strings.HasPrefix(norm, containerVolumesHostPath) {
+			ret[mount.Destination] = norm
 		}
 	}
 	return ret, nil
