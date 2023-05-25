@@ -193,15 +193,17 @@ func TestVolumeOwnership(t *testing.T) {
 	// exist inside the container that returns the owner in the form of USERNAME:SID.
 	t.Logf("Check ownership of test directory inside container")
 
+	volumePath := "/test_dir"
 	cmd := []string{
-		"stat", "-c", "%u:%g", "/test_dir",
+		"stat", "-c", "%u:%g", volumePath,
 	}
 	expectedContainerOutput := "65534:65534\n"
 	expectedHostOutput := "65534:65534\n"
 	if runtime.GOOS == "windows" {
+		volumePath = "C:\\volumes\\test_dir"
 		cmd = []string{
 			"C:\\bin\\get_owner.exe",
-			"C:\\volumes\\test_dir",
+			volumePath,
 		}
 		expectedContainerOutput = fmt.Sprintf("%s:%s", containerUserName, containerUserSID)
 		// The username is unknown on the host, but we can still get the SID.
@@ -213,11 +215,12 @@ func TestVolumeOwnership(t *testing.T) {
 	assert.Equal(t, expectedContainerOutput, string(stdout))
 
 	t.Logf("Check ownership of test directory on the host")
-	volumePaths, err := getHostPathForVolumes(*criRoot, cn)
+	// volumePaths, err := getHostPathForVolumes(*criRoot, cn)
+	volumePaths, err := getContainerVolumes(t, *criRoot, cn)
 	require.NoError(t, err)
 	assert.Equal(t, len(volumePaths), 1, "expected exactly 1 volume")
 
-	output, err := getOwnership(volumePaths[0])
+	output, err := getOwnership(volumePaths[volumePath])
 	require.NoError(t, err)
 	assert.Equal(t, expectedHostOutput, output)
 }
@@ -251,27 +254,4 @@ func getContainerVolumes(t *testing.T, criRoot, containerID string) (map[string]
 		}
 	}
 	return ret, nil
-}
-
-func getHostPathForVolumes(criRoot, containerID string) ([]string, error) {
-	hostPath := filepath.Join(criRoot, "containers", containerID, "volumes")
-	if _, err := os.Stat(hostPath); err != nil {
-		return nil, err
-	}
-
-	volumes, err := os.ReadDir(hostPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(volumes) == 0 {
-		return []string{}, nil
-	}
-
-	volumePaths := make([]string, len(volumes))
-	for idx, volume := range volumes {
-		volumePaths[idx] = filepath.Join(hostPath, volume.Name())
-	}
-
-	return volumePaths, nil
 }
